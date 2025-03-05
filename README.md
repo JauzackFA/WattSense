@@ -37,10 +37,10 @@ Penggunaan listrik di sektor rumah tangga menyumbang lebih dari seperempat total
 
 3. Install dependencies
 
-   ````flutter pub get
-   npm install```
+   ```flutter pub get
+   npm install
 
-   ````
+   ```
 
 4. Jalankan Aplikasi
    `flutter run`
