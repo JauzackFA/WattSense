@@ -24,27 +24,6 @@ Penggunaan listrik di sektor rumah tangga menyumbang lebih dari seperempat total
 - **Database:** MySQL
 - **Metodologi Pengembangan:** Waterfall
 
-## Cara Instalasi
-
-1. Clone repository ini:
-
-   ```bash
-   git clone https://github.com/username/WattSense.git
-   ```
-
-2. Masuk ke folder project:
-   `cd WattSense`
-
-3. Install dependencies
-
-   ```flutter pub get
-   npm install
-
-   ```
-
-4. Jalankan Aplikasi
-   `flutter run`
-
 ## Metode Penelitian
 
 Metode yang digunakan adalah Research and Development (R&D) dengan model pengembangan perangkat lunak Waterfall. Tahapan metode meliputi:
