@@ -1,29 +1,61 @@
-import '../../domain/models/history_detail_item_model.dart';
-import '../../domain/models/summary_model.dart';
-import '../dummy_data.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../../domain/models/history_detail_item_model.dart';
 
-/// Repository untuk semua data yang terkait dengan riwayat dan ringkasan.
 class HistoryRepository {
-  /// DIUBAH: Metode terpadu untuk mengambil data ringkasan bulanan.
-  /// Metode ini akan digunakan oleh HomePage dan HistoryPage.
-  Future<SummaryModel> getMonthlySummary() async {
-    await Future.delayed(const Duration(seconds: 1));
-    return SummaryModel(
-      totalCost: 'Rp 1.280.000', // Nilai dari History Page
-      totalConsumption: '950.50 kWh', // Nilai dari History Page
-      budgetProgress: 0.6, // Nilai progress dari Home Page
+  final String _baseUrl =
+      "https://wattsensebackend-production.up.railway.app/api/roomDevice";
+
+  String _extractErrorMessage(String responseBody) {
+    try {
+      final data = jsonDecode(responseBody);
+      return data['error'] ?? data['message'] ?? 'An unknown error occurred.';
+    } catch (e) {
+      return 'Failed to parse error response.';
+    }
+  }
+
+  /// Mengambil semua data history dari backend.
+  Future<List<HistoryDetailItemModel>> getHistory() async {
+    final response = await http.get(Uri.parse(_baseUrl));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      // Ubah setiap item di list JSON menjadi objek HistoryDetailItemModel
+      return data.map((json) => HistoryDetailItemModel.fromJson(json)).toList();
+    } else {
+      throw Exception(_extractErrorMessage(response.body));
+    }
+  }
+
+  /// Menambahkan perangkat baru ke history di backend.
+  Future<HistoryDetailItemModel> addDeviceToHistory(
+      HistoryDetailItemModel device) async {
+    final response = await http.post(
+      Uri.parse(_baseUrl),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8'
+      },
+      body: jsonEncode(device.toJson()),
     );
+
+    if (response.statusCode == 201) {
+      // 201 Created
+      // Backend akan mengembalikan data yang baru saja dibuat, lengkap dengan ID
+      return HistoryDetailItemModel.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception(_extractErrorMessage(response.body));
+    }
   }
 
-  /// Mensimulasikan pengambilan data riwayat terbaru untuk Home Page.
-  Future<List<HistoryDetailItemModel>> getRecentHistory() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
-    return DummyData.historyItems.take(3).toList();
-  }
+  /// Menghapus item history dari backend berdasarkan ID.
+  Future<void> deleteHistoryItem(String id) async {
+    final response = await http.delete(Uri.parse('$_baseUrl/$id'));
 
-  /// Mensimulasikan pengambilan semua data riwayat untuk History Page.
-  Future<List<HistoryDetailItemModel>> getFullHistory() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
-    return DummyData.historyItems;
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      // 204 No Content
+      throw Exception(_extractErrorMessage(response.body));
+    }
+    // Tidak perlu mengembalikan apa pun jika berhasil
   }
 }

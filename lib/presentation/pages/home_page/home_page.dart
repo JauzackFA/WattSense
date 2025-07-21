@@ -63,15 +63,8 @@ class HomePage extends StatelessWidget {
                   }
 
                   // State: Sukses, bangun UI dengan data dari kedua state
-                  final historyForHome = historyState.fullHistory
-                      .take(3)
-                      .map((item) => HistoryDetailItemModel(
-                            icon: item.icon,
-                            deviceName: item.deviceName,
-                            location: item.location,
-                            cost: item.cost,
-                          ))
-                      .toList();
+                  final historyForHome =
+                      historyState.fullHistory.take(3).toList();
 
                   final summary = historyState.summary;
                   final config = configState.configuration;

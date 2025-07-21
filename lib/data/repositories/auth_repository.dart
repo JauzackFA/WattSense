@@ -1,26 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../domain/models/auth_user_model.dart';
 
 /// Model untuk data pengguna.
 /// Field 'name' telah dihapus.
-class AuthUserModel {
-  final String id;
-  // final String name; // Dihapus
-  final String email;
-
-  const AuthUserModel({
-    required this.id,
-    // required this.name,
-    required this.email,
-  });
-
-  factory AuthUserModel.fromJson(Map<String, dynamic> json) {
-    return AuthUserModel(
-      id: json['id']?.toString() ?? '',
-      email: json['email'] ?? '',
-    );
-  }
-}
 
 /// Repository untuk mengelola semua proses otentikasi.
 class AuthRepository {
@@ -52,7 +37,15 @@ class AuthRepository {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data != null) {
-        return AuthUserModel(id: '1', email: email);
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('id', data['id']);
+        await prefs.setString('email', data['email']);
+        await prefs.setString('username', data['username']);
+        return AuthUserModel(
+          id: data['id'],
+          email: data['email'],
+          username: data['username'],
+        );
       } else {
         throw Exception(
             'Login successful, but API response is missing user data. Please fix the backend to return the user object.');
