@@ -1,12 +1,12 @@
 /// Model untuk merepresentasikan data pengguna dan token setelah login.
 class AuthUserModel {
   final String id;
-  final String name;
+  final String username;
   final String email;
 
   const AuthUserModel({
     required this.id,
-    required this.name,
+    required this.username,
     required this.email,
   });
 
@@ -15,7 +15,7 @@ class AuthUserModel {
   factory AuthUserModel.fromJson(Map<String, dynamic> json) {
     return AuthUserModel(
       id: json['user']['id'],
-      name: json['user']['name'],
+      username: json['user']['name'],
       email: json['user']['email'],
     );
   }

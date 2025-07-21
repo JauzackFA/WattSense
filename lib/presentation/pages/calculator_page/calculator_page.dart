@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../domain/models/history_detail_item_model.dart';
 import '../../../service/calculator_service.dart';
@@ -66,33 +67,37 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void _saveDevice() {
     if (!_formKey.currentState!.validate()) return;
 
-    // 1. Ambil semua nilai dari form.
+    // Buat instance dari Uuid
+    const uuid = Uuid();
+
+    // Ambil semua nilai dari form.
     final String deviceName = _deviceNameController.text;
     final double power = double.parse(_powerController.text);
     final double duration = double.parse(_durationController.text);
     final String location = _selectedRoom!;
 
-    // 2. Hitung biaya dan konsumsi final.
+    // Hitung biaya dan konsumsi final.
     final double monthlyCost = CalculatorService.calculateMonthlyCost(
         power: power, duration: duration);
     final double monthlyKwh =
         CalculatorService.calculateMonthlyKwh(power: power, duration: duration);
 
-    // 3. Buat objek HistoryDetailItemModel baru.
+    // Buat objek HistoryDetailItemModel baru.
     final newDevice = HistoryDetailItemModel(
-      // TODO: Sediakan pilihan ikon atau buat logika untuk memilih ikon
+      // 2. Buat ID unik sementara menggunakan uuid
+      id: uuid.v4(),
+
       icon: Icons.electrical_services_outlined,
       deviceName: deviceName,
-      location: location, // TODO: Sediakan pilihan ruangan
+      location: location,
       consumption: '${monthlyKwh.toStringAsFixed(1)} kWh',
       cost: CalculatorService.formatToRupiah(monthlyCost),
     );
 
-    // 4. Panggil metode di Cubit untuk menambahkan item baru.
-    // 'context.read' akan mencari instance HistoryCubit terdekat di widget tree.
+    // Panggil metode di Cubit untuk menambahkan item baru.
     context.read<HistoryCubit>().addDeviceToHistory(newDevice);
 
-    // 5. Beri feedback ke pengguna.
+    // Beri feedback ke pengguna.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$deviceName berhasil disimpan!'),
@@ -100,7 +105,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       ),
     );
 
-    // 6. Reset semua field.
+    // Reset semua field.
     _formKey.currentState?.reset();
     _deviceNameController.clear();
     _powerController.clear();
