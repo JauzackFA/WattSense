@@ -93,6 +93,8 @@ class HistoryRepository {
         'roomId': int.tryParse(roomId) ?? roomId,
         'deviceId': int.tryParse(deviceId) ?? deviceId,
         'duration': duration,
+        'userId': userId,
+        'totalCOnsuption': totalConsumption
       }),
     );
     if (resp.statusCode == 200) {
@@ -132,8 +134,9 @@ class HistoryRepository {
       });
 
       // 3. RoomDevice
+      var rd;
       if (room != null && device != null) {
-        final rd = await createRoomDeviceRaw(
+        rd = await createRoomDeviceRaw(
             roomId: room['id'].toString(),
             deviceId: device['id'].toString(),
             duration: durationHours,
