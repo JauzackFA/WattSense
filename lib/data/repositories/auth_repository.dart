@@ -127,4 +127,13 @@ class AuthRepository {
 
     print('Password reset link sent to: $email');
   }
+
+  /// ✅ Fungsi Logout: Menghapus data pengguna dari SharedPreferences
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('id');
+    await prefs.remove('email');
+    await prefs.remove('username');
+    print('--- LOGOUT BERHASIL --- Semua data pengguna dihapus.');
+  }
 }
