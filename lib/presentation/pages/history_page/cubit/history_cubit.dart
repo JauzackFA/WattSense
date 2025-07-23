@@ -1,8 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:collection/collection.dart';
 
-// Pastikan path import ini benar sesuai struktur folder Anda
+// Pastikan path import ini sesuai struktur project Anda
 import '../../../../domain/models/summary_model.dart';
 import '../../../../domain/models/history_detail_item_model.dart';
 import '../../../../data/repositories/history_repository.dart';
@@ -14,87 +13,79 @@ class HistoryCubit extends Cubit<HistoryState> {
 
   HistoryCubit(this._historyRepository) : super(HistoryState.initial());
 
-  /// [MODIFIKASI] Mengambil data dari repository backend
+  /// Mengambil seluruh data history dari repository dan update state
   Future<void> fetchHistoryPageData() async {
     emit(state.copyWith(status: HistoryStatus.loading));
     try {
-      // Hanya panggil satu method untuk mendapatkan semua history
       final history = await _historyRepository.getHistory();
 
-      // Hitung summary di sisi klien dari data history yang didapat
       final summary = _calculateSummary(history);
-
-      // Dapatkan daftar ruangan unik dari data
-      final rooms = history.map((item) => item.location).toSet().toList();
+      final rooms = _extractRooms(history);
 
       emit(state.copyWith(
         status: HistoryStatus.success,
         summary: summary,
         fullHistory: history,
-        filteredHistory: history, // Awalnya tampilkan semua
+        filteredHistory: history,
         availableRooms: ['All Rooms', ...rooms],
       ));
     } catch (e) {
       emit(state.copyWith(
-          status: HistoryStatus.failure, errorMessage: e.toString()));
+        status: HistoryStatus.failure,
+        errorMessage: e.toString(),
+      ));
     }
   }
 
-  /// [MODIFIKASI] Menambah perangkat baru dan mengirimnya ke backend
+  /// Menambahkan data perangkat baru (optimistic UI + backend)
   Future<void> addDeviceToHistory(HistoryDetailItemModel newDevice) async {
-    // Pastikan state saat ini adalah success
+    print('📦 [Cubit] Menerima perangkat baru: ${newDevice.toString()}');
+
     if (state.status != HistoryStatus.success) return;
 
-    // 1. Optimistic UI Update
-    final optimisticHistory =
-        List<HistoryDetailItemModel>.from(state.fullHistory)
-          ..insert(0, newDevice);
-
+    final optimisticHistory = [newDevice, ...state.fullHistory];
     emit(state.copyWith(fullHistory: optimisticHistory));
-    applyFilter(); // Terapkan filter ke daftar yang baru
+    applyFilter();
 
     try {
-      // 2. Panggil API untuk menyimpan data ke backend
-      final createdDevice =
+      final savedDevice =
           await _historyRepository.addDeviceToHistory(newDevice);
+      print(
+          '💾 [Cubit] Perangkat berhasil disimpan, data dari server: ${savedDevice.toString()}');
 
-      // 3. Jika berhasil, perbarui state dengan data valid dari server
-      final finalHistory = List<HistoryDetailItemModel>.from(state.fullHistory);
-      // Ganti item sementara dengan item yang sudah memiliki ID dari server
-      finalHistory[0] = createdDevice;
-
-      // Perbarui juga data summary dan daftar ruangan
-      final summary = _calculateSummary(finalHistory);
-      final rooms = finalHistory.map((item) => item.location).toSet().toList();
+      // Ganti item pertama dengan item dari server
+      final updatedHistory = [savedDevice, ...state.fullHistory.skip(1)];
+      final updatedSummary = _calculateSummary(updatedHistory);
+      final updatedRooms = _extractRooms(updatedHistory);
 
       emit(state.copyWith(
-        fullHistory: finalHistory,
-        summary: summary,
-        availableRooms: ['All Rooms', ...rooms],
+        fullHistory: updatedHistory,
+        summary: updatedSummary,
+        availableRooms: ['All Rooms', ...updatedRooms],
         status: HistoryStatus.success,
       ));
-      // Terapkan filter lagi untuk memastikan konsistensi
       applyFilter();
     } catch (e) {
-      // 4. Jika gagal, kembalikan state ke semula (rollback) dan tampilkan error
+      print('❌ [Cubit] Gagal menyimpan perangkat: ${newDevice.toString()}');
+      print('      Penyebab Error: ${e.toString()}');
+      // Rollback jika gagal
+      final rolledBackHistory =
+          state.fullHistory.where((item) => item.id != newDevice.id).toList();
       emit(state.copyWith(
-          fullHistory: state.fullHistory
-              .where((item) => item.id != newDevice.id)
-              .toList(),
-          status: HistoryStatus.failure,
-          errorMessage: "Failed to save device: ${e.toString()}"));
+        fullHistory: rolledBackHistory,
+        status: HistoryStatus.failure,
+        errorMessage: "Gagal menambahkan perangkat: ${e.toString()}",
+      ));
       applyFilter();
     }
   }
 
-  /// Memfilter daftar riwayat berdasarkan kriteria yang dipilih.
-  /// (Tidak ada perubahan di sini, method ini sudah benar)
+  /// Memfilter daftar riwayat berdasarkan bulan dan/atau ruangan
   void applyFilter({DateTime? month, String? room}) {
     final newMonth = month ?? state.selectedMonth;
     final newRoom = room ?? state.selectedRoom;
 
-    final filteredList = state.fullHistory.where((item) {
-      // TODO: Tambahkan logika filter bulan jika model sudah memiliki tanggal
+    final filtered = state.fullHistory.where((item) {
       final roomMatches = newRoom == 'All Rooms' || item.location == newRoom;
       return roomMatches;
     }).toList();
@@ -102,36 +93,33 @@ class HistoryCubit extends Cubit<HistoryState> {
     emit(state.copyWith(
       selectedMonth: newMonth,
       selectedRoom: newRoom,
-      filteredHistory: filteredList,
+      filteredHistory: filtered,
     ));
   }
 
-  /// Helper untuk menghitung summary dari list history
-  /// (Ini adalah contoh, sesuaikan dengan logika Anda)
+  /// Menghitung total konsumsi dan biaya dari daftar history
   SummaryModel _calculateSummary(List<HistoryDetailItemModel> history) {
-    double totalKwh = 0;
-    // Asumsi format 'consumption' adalah "123.4 kWh"
-    // Asumsi format 'cost' adalah "Rp 123.456"
+    double totalKwh = 0.0;
+    double totalCost = 0.0;
 
     for (var item in history) {
-      final kwhString = item.consumption.replaceAll(' kWh', '');
-      totalKwh += double.tryParse(kwhString) ?? 0;
+      final kwh =
+          double.tryParse(item.consumption.replaceAll(' kWh', '')) ?? 0.0;
+      final cost =
+          double.tryParse(item.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+
+      totalKwh += kwh;
+      totalCost += cost;
     }
 
-    // Sesuaikan dengan field yang ada di SummaryModel Anda
     return SummaryModel(
-      // 1. Ganti 'totalUsage' menjadi 'totalConsumption'
       totalConsumption: '${totalKwh.toStringAsFixed(1)} kWh',
-
-      // Ini sudah benar
-      totalCost:
-          'Rp ...', // TODO: Anda perlu logika untuk menghitung total biaya
-
-      // 2. Tambahkan parameter 'budgetProgress' yang wajib diisi
-      // Untuk sementara, kita bisa beri nilai dummy 0.0
-      budgetProgress: 0.0,
-
-      // 3. Hapus parameter 'prediction' karena tidak ada di model
+      totalCost: 'Rp ${totalCost.toStringAsFixed(0)}',
+      budgetProgress: 0.0, // Sesuaikan jika ada logika budget
     );
+  }
+
+  List<String> _extractRooms(List<HistoryDetailItemModel> list) {
+    return list.map((e) => e.location).toSet().toList();
   }
 }
