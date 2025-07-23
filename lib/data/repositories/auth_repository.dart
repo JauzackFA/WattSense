@@ -29,26 +29,36 @@ class AuthRepository {
     final response = await http.post(
       Uri.parse('$_baseUrl/login'),
       headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8'
+        'Content-Type': 'application/json; charset=UTF-8',
       },
       body: jsonEncode({'email': email, 'password': password}),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+
+      print('DATA: $data');
+      print('ID: ${data['id']}');
+      print('EMAIL: ${data['email']}');
+      print('USERNAME: ${data['username']}');
+
       if (data != null) {
+        final String safeUsername = data['username'] ?? data['email'] ?? '';
+
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('id', data['id']);
-        await prefs.setString('email', data['email']);
-        await prefs.setString('username', data['username']);
+        await prefs.setInt('id', data['id']);
+        await prefs.setString('email', data['email'] ?? '');
+        await prefs.setString('username', safeUsername);
+
         return AuthUserModel(
-          id: data['id'],
-          email: data['email'],
-          username: data['username'],
+          id: data['id'].toString(),
+          email: data['email'] ?? '',
+          username: safeUsername,
         );
       } else {
         throw Exception(
-            'Login successful, but API response is missing user data. Please fix the backend to return the user object.');
+          'Login berhasil, tetapi data user kosong. Mohon pastikan backend mengembalikan data user.',
+        );
       }
     } else {
       print('--- LOGIN GAGAL ---');
@@ -74,7 +84,26 @@ class AuthRepository {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return AuthUserModel.fromJson(jsonDecode(response.body));
+      final body = response.body;
+
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: $body");
+
+      if (body.isNotEmpty) {
+        try {
+          final data = jsonDecode(body);
+          if (data is Map<String, dynamic>) {
+            return AuthUserModel.fromJson(data);
+          } else {
+            throw Exception(
+                "Format response tidak sesuai. Harus berupa objek JSON.");
+          }
+        } catch (e) {
+          throw Exception("Gagal parsing response signup: $e");
+        }
+      } else {
+        throw Exception("Response kosong dari server saat signup.");
+      }
     } else {
       throw Exception(_extractErrorMessage(response.body));
     }
@@ -126,5 +155,14 @@ class AuthRepository {
     }
 
     print('Password reset link sent to: $email');
+  }
+
+  /// ✅ Fungsi Logout: Menghapus data pengguna dari SharedPreferences
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('id');
+    await prefs.remove('email');
+    await prefs.remove('username');
+    print('--- LOGOUT BERHASIL --- Semua data pengguna dihapus.');
   }
 }

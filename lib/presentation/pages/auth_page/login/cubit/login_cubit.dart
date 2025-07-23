@@ -1,6 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-
+import '../../../../../domain/models/auth_user_model.dart';
 import '../../../../../../../../data/repositories/auth_repository.dart';
 
 part 'login_state.dart';
