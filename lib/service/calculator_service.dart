@@ -1,7 +1,7 @@
 import 'package:intl/intl.dart';
 
 class CalculatorService {
-  static const double _electricityRate = 1700.0;
+  static const double _electricityRate = 1700.0; //ubah ke 1.444
 
   static double calculateMonthlyKwh(
       {required double power, required double duration}) {
