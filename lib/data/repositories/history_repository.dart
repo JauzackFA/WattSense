@@ -80,26 +80,37 @@ class HistoryRepository {
   //   "createdAt": "..."
   // }
   // -----------------------
-  Future<Map<String, dynamic>> createRoomDeviceRaw(
-      {required String roomId,
-      required String deviceId,
-      required int duration,
-      required int userId,
-      required int totalConsumption}) async {
+  Future<Map<String, dynamic>> createRoomDeviceRaw({
+    required String roomId,
+    required String deviceId,
+    required int duration,
+    required int userId,
+    required int totalConsumption,
+  }) async {
+    final Map<String, dynamic> body = {
+      'roomId': int.tryParse(roomId) ?? roomId,
+      'deviceId': int.tryParse(deviceId) ?? deviceId,
+      'duration': duration,
+      'userId': userId,
+      'totalConsumption': totalConsumption,
+    };
+
+    print('📤 [API] Sending POST /roomDevice with body: $body');
+    print(
+        '🟡 RoomDevice Payload: roomId=$roomId, deviceId=$deviceId, duration=$duration, userId=$userId, totalConsumption=$totalConsumption');
     final resp = await _http.post(
       Uri.parse("$_baseUrl/roomDevice"),
       headers: _jsonHeaders,
-      body: jsonEncode({
-        'roomId': int.tryParse(roomId) ?? roomId,
-        'deviceId': int.tryParse(deviceId) ?? deviceId,
-        'duration': duration,
-        'userId': userId,
-        'totalCOnsuption': totalConsumption
-      }),
+      body: jsonEncode(body),
     );
-    if (resp.statusCode == 200) {
+
+    print('📥 [API] Response status: ${resp.statusCode}');
+    print('📥 [API] Response body: ${resp.body}');
+
+    if (resp.statusCode == 200 || resp.statusCode == 201) {
       return jsonDecode(resp.body) as Map<String, dynamic>;
     }
+
     throw Exception(_extractErrorMessage(resp.body));
   }
 
@@ -126,13 +137,13 @@ class HistoryRepository {
         'name': roomName,
         'userId': userId,
       });
-
+      print('✅ Room created: $room');
       // 2. Device
       final device = await createDevice({
         'name': deviceName,
         'powerConsumption': deviceWatt,
       });
-
+      print('✅ Device created: $device');
       // 3. RoomDevice
       var rd;
       if (room != null && device != null) {
