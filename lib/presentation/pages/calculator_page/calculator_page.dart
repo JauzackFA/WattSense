@@ -94,6 +94,8 @@ class _CalculatorPageState extends State<CalculatorPage> {
       cost: CalculatorService.formatToRupiah(monthlyCost),
     );
 
+    print('✅ [UI] Data perangkat yang akan dikirim: ${newDevice.toString()}');
+
     // Panggil metode di Cubit untuk menambahkan item baru.
     context.read<HistoryCubit>().addDeviceToHistory(newDevice);
 
